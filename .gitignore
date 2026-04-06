@@ -1,0 +1,12 @@
+# Abaikan folder library (berat)
+node_modules/
+
+# Abaikan file rahasia (database/token)
+.env
+
+# Abaikan hasil build (biar gak double/bentrok)
+backend/client/dist/
+frontend/dist/
+
+# Abaikan file log
+*.log
