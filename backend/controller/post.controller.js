@@ -1,12 +1,12 @@
 import Post from "../models/post.model.js"
-import User from "../models/user.model.js" // [BARU] Perlu untuk cari admin
+import User from "../models/user.model.js" 
 import { errorHandler } from "../utils/error.js"
-import { createNotification } from "../utils/createNotification.js" // [BARU]
+import { createNotification } from "../utils/createNotification.js" 
 import natural from "natural"
 import sw from "stopword"
 import jwt from "jsonwebtoken" 
 
-// --- 1. CREATE POST ---
+// --- 1. CREATE POST (Tetap Sama) ---
 export const create = async (req, res, next) => {
   if (!req.body.title || !req.body.content) {
     return next(errorHandler(400, "Mohon lengkapi judul dan konten!"))
@@ -33,7 +33,6 @@ export const create = async (req, res, next) => {
   try {
     const savedPost = await newPost.save()
 
-    // --- [BARU] NOTIF KE ADMIN JIKA KONTRIBUTOR POST ---
     if (!req.user.isAdmin) {
       const admins = await User.find({ isAdmin: true });
       const notifPromises = admins.map(admin => 
@@ -53,7 +52,7 @@ export const create = async (req, res, next) => {
   }
 }
 
-// --- 2. GET POSTS (Logika tetap sama) ---
+// --- 2. GET POSTS (DIPERBARUI PADA TOTAL POSTS) ---
 export const getPosts = async (req, res, next) => {
   try {
     const startIndex = parseInt(req.query.startIndex) || 0
@@ -70,11 +69,13 @@ export const getPosts = async (req, res, next) => {
         }
     }
 
+    // Filter utama
     let queryFilters = {
       ...(req.query.userId && { userId: req.query.userId }),
       ...(req.query.category && { category: req.query.category }),
       ...(req.query.slug && { slug: req.query.slug }),
       ...(req.query.postId && { _id: req.query.postId }),
+      // Logika Jenjang: Mencari di dalam array criteriaEducationLevel
       ...(req.query.educationLevel && req.query.educationLevel !== 'all' && { 
           criteriaEducationLevel: { $in: [req.query.educationLevel] }
       }),
@@ -83,37 +84,43 @@ export const getPosts = async (req, res, next) => {
     const isAdmin = currentUser && currentUser.isAdmin;
     const isViewingOwnPosts = currentUser && req.query.userId === currentUser.id;
 
+    // Filter Status berdasarkan role
     if (isAdmin) {
         if (req.query.status) {
             queryFilters.status = req.query.status;
         }
     } else {
-        if (isViewingOwnPosts) {
-            // Kontributor lihat dashboard sendiri
-        } else {
+        if (!isViewingOwnPosts) {
             queryFilters.status = 'approved';
         }
     }
 
-    const allPosts = await Post.find(queryFilters).sort({ updatedAt: sortDirection });
-
-    let posts = allPosts;
+    // Tambahkan pencarian kata kunci ke query agar countDocuments akurat
     if (searchTerm) {
-      posts = allPosts.filter(post =>
-        post.title.toLowerCase().includes(searchTerm) ||
-        post.content.toLowerCase().includes(searchTerm)
-      )
+        queryFilters.$or = [
+            { title: { $regex: searchTerm, $options: 'i' } },
+            { content: { $regex: searchTerm, $options: 'i' } }
+        ];
     }
 
-    const paginatedPosts = posts.slice(startIndex, startIndex + limit)
-    const totalPosts = await Post.countDocuments(); 
+    // Ambil data dengan pagination langsung dari DB (lebih efisien daripada filter manual)
+    const posts = await Post.find(queryFilters)
+        .sort({ updatedAt: sortDirection })
+        .skip(startIndex)
+        .limit(limit);
+
+    // Hitung total beasiswa yang sesuai dengan FILTER saja (bukan semua isi DB)
+    const totalPosts = await Post.countDocuments(queryFilters); 
     
     const now = new Date()
     const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
-    const lastMonthPosts = await Post.countDocuments({ createdAt: { $gte: oneMonthAgo } })
+    const lastMonthPosts = await Post.countDocuments({ 
+        ...queryFilters, // Hanya hitung yang sesuai filter
+        createdAt: { $gte: oneMonthAgo } 
+    })
 
     res.status(200).json({
-      posts: paginatedPosts,
+      posts,
       totalPosts,
       lastMonthPosts,
     })
@@ -122,36 +129,30 @@ export const getPosts = async (req, res, next) => {
   }
 }
 
-// --- 3. APPROVE POST (KHUSUS ADMIN) ---
+// --- 3. APPROVE POST (Tetap Sama) ---
 export const approvePost = async (req, res, next) => {
   if (!req.user.isAdmin) {
     return next(errorHandler(403, "Hanya Admin yang dapat menyetujui artikel!"))
   }
-
   try {
     const updatedPost = await Post.findByIdAndUpdate(
       req.params.postId,
-      {
-        $set: { status: 'approved' },
-      },
+      { $set: { status: 'approved' } },
       { new: true }
     )
-
-    // --- [BARU] NOTIF KE PEMILIK ARTIKEL ---
     await createNotification(
-      updatedPost.userId, // Penerima (Mitra)
-      req.user.id,        // Pengirim (Admin)
+      updatedPost.userId,
+      req.user.id,
       `Kabar baik! Artikel "${updatedPost.title}" telah disetujui dan kini sudah tayang.`,
       'POST_APPROVAL'
     );
-
     res.status(200).json(updatedPost)
   } catch (error) {
     next(error)
   }
 }
 
-// --- 4. DELETE POST ---
+// --- 4. DELETE POST (Tetap Sama) ---
 export const deletepost = async (req, res, next) => {
   if (!req.user.isAdmin && req.user.id !== req.params.userId) {
     return next(errorHandler(403, "Anda tidak memiliki izin menghapus artikel ini!"))
@@ -164,7 +165,7 @@ export const deletepost = async (req, res, next) => {
   }
 }
 
-// --- 5. UPDATE POST ---
+// --- 5. UPDATE POST (Pastikan field kriteria ikut terupdate) ---
 export const updatepost = async (req, res, next) => {
   if (!req.user.isAdmin && req.user.id !== req.params.userId) {
     return next(errorHandler(403, "Anda tidak memiliki izin mengedit artikel ini!"))

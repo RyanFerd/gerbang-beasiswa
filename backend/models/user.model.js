@@ -7,14 +7,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      trim: true, // [UPDATE] Menghapus spasi tidak sengaja di awal/akhir
+      trim: true,
     },
     email: {
       type: String,
       required: true,
       unique: true,
       trim: true,
-      lowercase: true, // [UPDATE] Memastikan email tersimpan huruf kecil semua
+      lowercase: true,
     },
     password: {
       type: String,
@@ -31,16 +31,11 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
     
-    // Role Kontributor / Mitra
     isUserContributor: {
       type: Boolean,
       default: false, 
     },
 
-    // Status Persetujuan Akun
-    // Logic: 
-    // - User Biasa (Mahasiswa) -> Default TRUE (Langsung aktif)
-    // - Mitra (Institusi) -> Diubah jadi FALSE via Controller saat Register (Menunggu Admin)
     isApproved: {
       type: Boolean,
       default: true, 
@@ -52,15 +47,17 @@ const userSchema = new mongoose.Schema(
         default: "",
         trim: true,
     },
-    // [BARU] Website Institusi (Sesuai Controller)
     website: {
         type: String,
         default: "",
         trim: true,
     },
 
-    // --- 5 ATRIBUT KHUSUS SKRIPSI (DATA REKOMENDASI MAHASISWA) ---
-    educationLevel: { type: String, default: "Umum" },
+    educationLevel: { 
+      type: String, 
+      default: "all",
+      enum: ['TK', 'SD', 'SMP', 'SMA', 'Diploma', 'S1', 'S2', 'S3', 'all'] 
+    },
     major: { type: String, default: "" },
     gpa: { type: Number, default: 0 },
     location: { type: String, default: "" },

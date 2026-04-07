@@ -1,4 +1,4 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
 const postSchema = new mongoose.Schema(
   {
@@ -31,18 +31,29 @@ const postSchema = new mongoose.Schema(
       unique: true,
     },
     
-    // --- LINK PENDAFTARAN (BARU) ---
+    // --- LINK PENDAFTARAN ---
     officialLink: {
       type: String,
-      default: "", // Default kosong agar tidak error jika tidak diisi
+      default: "", 
     },
 
     // --- 5 KRITERIA BEASISWA (UNTUK ALGORITMA) ---
     
-    // 1. Target Jenjang
+    // 1. Target Jenjang (UPDATE DI SINI)
     criteriaEducationLevel: {
-      type: [String], // Array of strings
-      default: ["Umum"], 
+      type: [String], 
+      default: ["all"], // Menggunakan 'all' sebagai standar "Semua Jenjang"
+      enum: [
+        'TK', 
+        'SD', 
+        'SMP', 
+        'SMA', 
+        'Diploma', 
+        'S1', 
+        'S2', 
+        'S3', 
+        'all'
+      ], 
     },
 
     // 2. Target Jurusan
@@ -70,17 +81,13 @@ const postSchema = new mongoose.Schema(
     },
 
     // --- PENGATURAN WAKTU ---
-    
-    // Tanggal Dibuka (Start Date)
     startDate: {
         type: Date,
-        default: Date.now, // Default hari ini jika kosong
+        default: Date.now,
     },
-
-    // Tanggal Ditutup (Deadline)
     deadline: {
       type: Date,
-      default: null, // Boleh kosong/null (selamanya)
+      default: null,
     },
 
     // --- STATUS POSTINGAN ---

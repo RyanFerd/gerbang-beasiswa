@@ -201,7 +201,7 @@ const Search = () => {
                     </div>
                 )}
 
-                {/* 3. TARGET JENJANG */}
+                {/* 3. TARGET JENJANG (Update S2 & S3) */}
                 <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Target Jenjang</label>
                     <Select onValueChange={(value) => setSidebarData({ ...sidebarData, educationLevel: value })} value={sidebarData.educationLevel}>
@@ -210,15 +210,19 @@ const Search = () => {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Semua Jenjang</SelectItem>
-                            <SelectItem value="SMA">SMA / Sederajat</SelectItem>
+                            <SelectItem value="TK">TK / PAUD</SelectItem>
+                            <SelectItem value="SD">SD / MI</SelectItem>
+                            <SelectItem value="SMP">SMP / MTs</SelectItem>
+                            <SelectItem value="SMA">SMA / SMK / Sederajat</SelectItem>
                             <SelectItem value="Diploma">Diploma (D3 / D4)</SelectItem>
                             <SelectItem value="S1">Sarjana (S1)</SelectItem>
-                            <SelectItem value="Pascasarjana">Pascasarjana (S2 / S3)</SelectItem>
+                            <SelectItem value="S2">Magister (S2)</SelectItem>
+                            <SelectItem value="S3">Doktor (S3)</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
 
-                {/* 4. REKOMENDASI CERDAS (Highlighted & Informatif) */}
+                {/* 4. REKOMENDASI CERDAS */}
                 <div className={`p-3 rounded-xl border-2 transition-all duration-300 ${
                     isRecommendationMode ? "bg-yellow-50 border-yellow-400 shadow-md" : "bg-blue-50/50 border-blue-100"
                 }`}>
@@ -229,7 +233,6 @@ const Search = () => {
                                 Rekomendasi Cerdas
                             </h3>
                         </div>
-                        {/* Tooltip Info untuk Detail Ekstra */}
                         <div className="group relative">
                             <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
                             <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
@@ -238,7 +241,6 @@ const Search = () => {
                         </div>
                     </div>
                     
-                    {/* Detail Singkat */}
                     <div className="space-y-1 mb-3">
                         <p className="text-[10px] text-slate-600 flex items-start gap-1">
                             <span className="text-blue-500 font-bold">•</span>
@@ -368,7 +370,7 @@ const Search = () => {
                             </div>
                         </div>
                     </div>
-                 ))}
+                  ))}
             </div>
 
              {showMore && (
