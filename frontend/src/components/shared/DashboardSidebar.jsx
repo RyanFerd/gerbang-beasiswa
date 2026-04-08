@@ -4,19 +4,18 @@ import {
   FaSignOutAlt, 
   FaUserAlt, 
   FaUsers, 
-  FaBuilding // Icon untuk Mitra
+  FaBuilding 
 } from "react-icons/fa"
 import { useDispatch, useSelector } from "react-redux"
-import { Link, useLocation } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom" // [UPDATE] Tambahkan useNavigate
 import { IoIosCreate, IoIosDocument } from "react-icons/io"
 import { MdDashboardCustomize } from "react-icons/md"
-
-// [PERBAIKAN 1]: Import harus sesuai nama di userSlice (pakai 'O' besar)
 import { signOutSuccess } from "../../redux/user/userSlice" 
 
 const DashboardSidebar = () => {
   const dispatch = useDispatch()
   const location = useLocation()
+  const navigate = useNavigate() // [UPDATE] Inisialisasi navigate
   const { currentUser } = useSelector((state) => state.user)
   const [tab, setTab] = useState("")
 
@@ -29,6 +28,7 @@ const DashboardSidebar = () => {
     }
   }, [location.search])
 
+  // --- FUNGSI SIGNOUT ---
   const handleSignout = async () => {
     try {
       const res = await fetch("/api/user/signout", {
@@ -40,17 +40,16 @@ const DashboardSidebar = () => {
       if (!res.ok) {
         console.log(data.message)
       } else {
-        // [PERBAIKAN 2]: Dispatch action dengan nama yang benar
-        dispatch(signOutSuccess()) 
+        dispatch(signOutSuccess())
+        navigate('/sign-in') // [UPDATE] Arahkan ke sign-in setelah logout sukses
       }
     } catch (error) {
-      console.log(error)
+      console.log("Sidebar Signout Error:", error.message)
     }
   }
 
   // Helper untuk styling tombol menu (Active vs Inactive)
   const getLinkClass = (pathTab) => {
-    // Jika pathTab kosong (seperti create-post), cek pathname langsung
     if (!pathTab) {
         if (location.pathname === "/create-post") {
             return "flex items-center px-4 py-3 bg-blue-900 text-white rounded-lg shadow-md transition-all duration-200 font-medium"
@@ -58,7 +57,6 @@ const DashboardSidebar = () => {
         return "flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-900 rounded-lg transition-all duration-200 font-medium"
     }
 
-    // Cek tab
     return tab === pathTab
       ? "flex items-center px-4 py-3 bg-blue-900 text-white rounded-lg shadow-md transition-all duration-200 font-medium"
       : "flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-900 rounded-lg transition-all duration-200 font-medium"
@@ -82,8 +80,7 @@ const DashboardSidebar = () => {
       <nav className="flex-1 px-4 py-6 overflow-y-auto">
         <ul className="space-y-2">
           
-          {/* 1. Dashboard (Admin Only) */}
-          {currentUser && currentUser.isAdmin && (
+          {currentUser?.isAdmin && (
             <li>
               <Link to={"/dashboard?tab=dash"} className={getLinkClass("dash")}>
                 <MdDashboardCustomize className="mr-3 text-lg" />
@@ -92,8 +89,7 @@ const DashboardSidebar = () => {
             </li>
           )}
 
-          {/* 2. Mitra Institusi (Admin Only) */}
-          {currentUser && currentUser.isAdmin && (
+          {currentUser?.isAdmin && (
             <li>
                 <Link to={"/dashboard?tab=partners"} className={getLinkClass("partners")}>
                     <FaBuilding className="mr-3 text-lg" />
@@ -102,7 +98,6 @@ const DashboardSidebar = () => {
             </li>
           )}
 
-          {/* 3. Profile (Everyone) */}
           <li>
             <Link to={"/dashboard?tab=profile"} className={getLinkClass("profile")}>
               <FaUserAlt className="mr-3 text-lg" />
@@ -110,7 +105,6 @@ const DashboardSidebar = () => {
             </Link>
           </li>
 
-          {/* 4. Create Post (Admin OR Contributor) */}
           {currentUser && (currentUser.isAdmin || currentUser.isUserContributor) && (
             <li>
               <Link to={"/create-post"} className={getLinkClass(null)}>
@@ -120,7 +114,6 @@ const DashboardSidebar = () => {
             </li>
           )}
 
-          {/* 5. Your Articles (Admin OR Contributor) */}
           {currentUser && (currentUser.isAdmin || currentUser.isUserContributor) && (
             <li>
               <Link to={"/dashboard?tab=posts"} className={getLinkClass("posts")}>
@@ -130,8 +123,7 @@ const DashboardSidebar = () => {
             </li>
           )}
 
-          {/* 6. All Users (Admin Only) */}
-          {currentUser && currentUser.isAdmin && (
+          {currentUser?.isAdmin && (
             <li>
               <Link to={"/dashboard?tab=users"} className={getLinkClass("users")}>
                 <FaUsers className="mr-3 text-lg" />
@@ -140,8 +132,7 @@ const DashboardSidebar = () => {
             </li>
           )}
 
-          {/* 7. Comments (Admin Only) */}
-          {currentUser && currentUser.isAdmin && (
+          {currentUser?.isAdmin && (
             <li>
               <Link to={"/dashboard?tab=comments"} className={getLinkClass("comments")}>
                 <FaComments className="mr-3 text-lg" />

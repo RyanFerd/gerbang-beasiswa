@@ -24,11 +24,11 @@ const Header = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [isScrolled, setIsScrolled] = useState(false)
   
-  // --- [UPDATE] State Notifikasi Asli ---
+  // --- STATE NOTIFIKASI ---
   const [notifications, setNotifications] = useState([]);
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  // --- [BARU] Fungsi Ambil Notifikasi dari Backend ---
+  // --- AMBIL NOTIFIKASI DARI BACKEND ---
   const fetchNotifications = async () => {
     try {
       const res = await fetch(`/api/user/notifications`);
@@ -41,7 +41,7 @@ const Header = () => {
     }
   };
 
-  // --- [BARU] Fungsi Tandai Sudah Dibaca ---
+  // --- TANDAI NOTIFIKASI SUDAH DIBACA ---
   const handleMarkAsRead = async (id) => {
     try {
       const res = await fetch(`/api/user/notifications/${id}/read`, {
@@ -55,15 +55,35 @@ const Header = () => {
     }
   };
 
+  // --- FUNGSI SIGNOUT (HANYA SATU) ---
+  const handleSignout = async () => {
+    try {
+      const res = await fetch("/api/user/signout", { 
+        method: "POST" 
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        dispatch(signOutSuccess());
+        navigate('/sign-in'); 
+      } else {
+        console.log(data.message);
+      }
+    } catch (error) {
+      console.log("Signout error:", error.message);
+    }
+  };
+
+  // Effect untuk polling notifikasi
   useEffect(() => {
     if (currentUser) {
       fetchNotifications();
-      // Cek notifikasi baru setiap 30 detik
       const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
     }
   }, [currentUser]);
 
+  // Effect untuk styling header saat scroll
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 0)
@@ -72,6 +92,7 @@ const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
+  // Effect untuk sinkronisasi searchTerm dari URL
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search)
     const searchTermFromUrl = urlParams.get("searchTerm")
@@ -79,17 +100,6 @@ const Header = () => {
       setSearchTerm(searchTermFromUrl)
     }
   }, [location.search])
-
-  const handleSignout = async () => {
-    try {
-      const res = await fetch("/api/user/signout", { method: "POST" })
-      if (res.ok) {
-        dispatch(signOutSuccess())
-      }
-    } catch (error) {
-      console.log(error)
-    }
-  }
 
   const handleSubmit = (e) => {
     e.preventDefault()

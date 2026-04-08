@@ -5,16 +5,22 @@ export const verifyToken = (req, res, next) => {
   const token = req.cookies.access_token
 
   if (!token) {
-    return next(errorHandler(401, "Unauthorized"))
+    // Jika tidak ada token sama sekali
+    return next(errorHandler(401, "Sesi Anda telah berakhir, silakan login kembali."));
   }
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
-      return next(errorHandler(401, "Unauthorized"))
+      // Jika token expired (lebih dari 1 hari) atau dimanipulasi
+      const message = err.name === 'TokenExpiredError' 
+        ? "Sesi login Anda sudah habis (1 hari), silakan masuk kembali." 
+        : "Akses tidak valid.";
+      
+      return next(errorHandler(401, message));
     }
 
-    req.user = user
-
-    next()
-  })
+    // Menyimpan data user (id, isAdmin, isUserContributor) ke dalam request
+    req.user = user;
+    next();
+  });
 }

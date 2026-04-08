@@ -1,20 +1,22 @@
 import User from "../models/user.model.js";
-import Notification from "../models/notification.model.js"; // [BARU]
+import Notification from "../models/notification.model.js";
 import { errorHandler } from "../utils/error.js";
 import bcryptjs from "bcryptjs";
-import { createNotification } from "../utils/createNotification.js"; // [BARU] Helper kita
+import { createNotification } from "../utils/createNotification.js";
 
 // --- 1. UPDATE USER ---
 export const updateUser = async (req, res, next) => {
   if (req.user.id !== req.params.userId) {
     return next(errorHandler(403, "You can only update your own account!"));
   }
+  
   if (req.body.password) {
     if (req.body.password.length < 8) {
-      return next(errorHandler(400, "Password must be atleast 8 characters"));
+      return next(errorHandler(400, "Password must be at least 8 characters"));
     }
     req.body.password = bcryptjs.hashSync(req.body.password, 10);
   }
+
   if (req.body.username) {
     if (req.body.username.length < 5 || req.body.username.length > 20) {
       return next(errorHandler(400, "Username must be between 5 and 20 characters"));
@@ -39,7 +41,8 @@ export const updateUser = async (req, res, next) => {
           email: req.body.email,
           profilePicture: req.body.profilePicture,
           password: req.body.password,
-          educationLevel: req.body.educationLevel,
+          // Pastikan field kriteria ini sinkron dengan Model & Frontend
+          educationLevel: req.body.educationLevel, 
           major: req.body.major,
           gpa: req.body.gpa,
           location: req.body.location,
@@ -67,7 +70,6 @@ export const toggleUserContributor = async (req, res, next) => {
     user.isUserContributor = !user.isUserContributor;
     await user.save();
 
-    // [NOTIFIKASI] Jika user diaktifkan sebagai kontributor
     if (user.isUserContributor) {
       await createNotification(
         user._id,
@@ -92,15 +94,6 @@ export const deleteUser = async (req, res, next) => {
   try {
     await User.findByIdAndDelete(req.params.userId);
     res.status(200).json("User has been deleted!");
-  } catch (error) {
-    next(error);
-  }
-};
-
-// --- 4. SIGN OUT ---
-export const signout = async (req, res, next) => {
-  try {
-    res.clearCookie("access_token").status(200).json("User has been logged out successfully!");
   } catch (error) {
     next(error);
   }
@@ -142,10 +135,6 @@ export const getUser = async (req, res, next) => {
   }
 };
 
-// ==========================================
-//          TAMBAHAN FUNGSI MITRA
-// ==========================================
-
 // --- 7. AMBIL SEMUA DATA MITRA ---
 export const getPartners = async (req, res, next) => {
   if (!req.user.isAdmin) return next(errorHandler(403, "Akses ditolak."));
@@ -171,7 +160,6 @@ export const approvePartner = async (req, res, next) => {
       { new: true }
     );
 
-    // [NOTIFIKASI] Kirim ke Mitra bahwa pendaftaran disetujui
     await createNotification(
       updatedUser._id,
       req.user.id,
@@ -195,10 +183,6 @@ export const rejectPartner = async (req, res, next) => {
     next(error);
   }
 };
-
-// ==========================================
-//       [BARU] FUNGSI NOTIFIKASI
-// ==========================================
 
 // --- 10. AMBIL NOTIFIKASI USER ---
 export const getNotifications = async (req, res, next) => {
