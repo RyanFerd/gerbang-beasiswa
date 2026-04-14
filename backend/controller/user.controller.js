@@ -41,12 +41,15 @@ export const updateUser = async (req, res, next) => {
           email: req.body.email,
           profilePicture: req.body.profilePicture,
           password: req.body.password,
-          // Pastikan field kriteria ini sinkron dengan Model & Frontend
+          // --- DATA PENUNJANG BEASISWA (USER) ---
           educationLevel: req.body.educationLevel, 
           major: req.body.major,
           gpa: req.body.gpa,
           location: req.body.location,
           income: req.body.income,
+          // --- DATA INSTITUSI (MITRA / KONTRIBUTOR) ---
+          organizationName: req.body.organizationName,
+          website: req.body.website,
         },
       },
       { new: true }

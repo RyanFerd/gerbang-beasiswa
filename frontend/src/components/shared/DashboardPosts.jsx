@@ -34,15 +34,11 @@ const DashboardPosts = () => {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        // --- PERBAIKAN LOGIKA DISINI ---
-        // Jika Admin: Ambil SEMUA post (tanpa filter userId) agar bisa review punya orang lain.
-        // Jika Kontributor: Ambil hanya post MILIK SENDIRI (userId=...).
         let url = `/api/post/getposts`
         
         if (!currentUser.isAdmin) {
             url += `?userId=${currentUser._id}`
         }
-        // -------------------------------
 
         const res = await fetch(url)
         const data = await res.json()
@@ -66,7 +62,6 @@ const DashboardPosts = () => {
   const handleShowMore = async () => {
     const startIndex = userPosts.length
     try {
-      // --- PERBAIKAN LOGIKA LOAD MORE ---
       let url = `/api/post/getposts?startIndex=${startIndex}`
       if (!currentUser.isAdmin) {
           url += `&userId=${currentUser._id}`
@@ -93,7 +88,6 @@ const DashboardPosts = () => {
       )
       const data = await res.json()
       if (!res.ok) {
-        console.log(data.message)
         toast({ title: "Gagal menghapus", description: data.message, variant: "destructive" })
       } else {
         setUserPosts((prev) =>
@@ -106,16 +100,13 @@ const DashboardPosts = () => {
     }
   }
 
-  // --- FUNGSI APPROVE ---
   const handleApprove = async (postId) => {
       try {
-        // Kita butuh endpoint backend untuk ini (Langkah 2 & 3 di bawah)
         const res = await fetch(`/api/post/approve-post/${postId}/${currentUser._id}`, {
             method: 'PUT',
         });
         
         if (res.ok) {
-            // Update tampilan secara realtime
             setUserPosts((prev) =>
                 prev.map((post) =>
                     post._id === postId ? { ...post, status: 'approved' } : post
@@ -140,13 +131,13 @@ const DashboardPosts = () => {
       
       {userPosts.length > 0 ? (
         <>
-          <div className="w-full overflow-x-auto border rounded-lg shadow-sm">
+          <div className="w-full overflow-x-auto border rounded-lg shadow-sm bg-white">
               <Table>
                 <TableCaption>Daftar artikel yang tersedia.</TableCaption>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Tanggal</TableHead>
-                    <TableHead>Penulis</TableHead> {/* Tambahan Info Penulis untuk Admin */}
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="w-[120px]">Tanggal</TableHead>
+                    <TableHead className="min-w-[220px]">Penulis & Institusi</TableHead> 
                     <TableHead>Cover</TableHead>
                     <TableHead>Judul</TableHead>
                     <TableHead>Status</TableHead>
@@ -156,14 +147,30 @@ const DashboardPosts = () => {
 
                 <TableBody className="divide-y">
                     {userPosts.map((post) => (
-                      <TableRow key={post._id} className={post.status === 'waiting' && currentUser.isAdmin ? "bg-yellow-50" : ""}>
-                        <TableCell>
-                          {new Date(post.updatedAt).toLocaleDateString()}
+                      <TableRow key={post._id} className={post.status !== 'approved' && currentUser.isAdmin ? "bg-yellow-50/50 hover:bg-yellow-50" : "hover:bg-slate-50 transition-colors"}>
+                        <TableCell className="text-slate-600 text-xs">
+                          {new Date(post.updatedAt).toLocaleDateString('id-ID')}
                         </TableCell>
 
-                        <TableCell className="text-xs text-slate-500">
-                             {/* Tampilkan UserId atau nama jika sudah di-populate di backend, sementara pakai ID/Placeholder */}
-                             {post.userId === currentUser._id ? "Anda" : "Kontributor"}
+                        {/* --- KOLOM PENULIS & INSTITUSI --- */}
+                        <TableCell>
+                          <div className="flex flex-col gap-1 py-1">
+                            <div className="flex items-center gap-2">
+                              <img 
+                                src={post.userId?.profilePicture || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'} 
+                                alt="avatar" 
+                                className="w-7 h-7 rounded-full object-cover border border-slate-200"
+                              />
+                              <span className="text-sm font-bold text-slate-800">
+                                {/* Menampilkan Nama Organisasi dari postingan atau dari profil user */}
+                                {post.organizationName || post.userId?.organizationName || "Institusi Umum"}
+                              </span>
+                            </div>
+                            
+                            <div className="text-[11px] text-slate-500 pl-9 italic">
+                               <span className="font-semibold not-italic text-slate-400">PJ:</span> {post.pic || post.userId?.username || "Anonim"}
+                            </div>
+                          </div>
                         </TableCell>
 
                         <TableCell>
@@ -171,40 +178,35 @@ const DashboardPosts = () => {
                             <img
                               src={post.image}
                               alt={post.title}
-                              className="w-14 h-10 object-cover rounded bg-gray-200"
+                              className="w-16 h-10 object-cover rounded bg-gray-200 shadow-sm"
                             />
                           </Link>
                         </TableCell>
 
-                        <TableCell className="font-medium max-w-xs truncate">
-                          <Link to={`/post/${post.slug}`} className="hover:text-blue-600 transition">
+                        <TableCell className="font-medium max-w-[200px] text-sm truncate">
+                          <Link to={`/post/${post.slug}`} className="text-slate-700 hover:text-blue-600 transition">
                               {post.title}
                           </Link>
                         </TableCell>
 
-                        {/* STATUS BADGE */}
                         <TableCell>
-                            {/* Cek status approved atau publish */}
-                            {post.status === 'approved' || post.status === 'publish' ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            {post.status === 'approved' ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-green-100 text-green-700 border border-green-200">
                                     Tayang
                                 </span>
                             ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 animate-pulse">
-                                    Menunggu Review
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-yellow-100 text-yellow-700 border border-yellow-200 animate-pulse">
+                                    Review
                                 </span>
                             )}
                         </TableCell>
 
-                        {/* AKSI */}
                         <TableCell>
                           <div className="flex items-center gap-3">
-                              
-                              {/* TOMBOL APPROVE (Hanya Admin & Status bukan approved) */}
-                              {currentUser.isAdmin && post.status !== 'approved' && post.status !== 'publish' && (
+                              {currentUser.isAdmin && post.status !== 'approved' && (
                                   <button
                                       onClick={() => handleApprove(post._id)}
-                                      className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 transition shadow-sm font-semibold"
+                                      className="text-[10px] bg-green-600 text-white px-2.5 py-1.5 rounded hover:bg-green-700 transition font-bold uppercase"
                                   >
                                       Setujui
                                   </button>
@@ -212,7 +214,7 @@ const DashboardPosts = () => {
 
                               <Link
                                 to={`/update-post/${post._id}`}
-                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                className="text-blue-600 hover:text-blue-800 font-bold text-xs uppercase"
                               >
                                 Edit
                               </Link>
@@ -221,7 +223,7 @@ const DashboardPosts = () => {
                                 <AlertDialogTrigger asChild>
                                   <span
                                     onClick={() => setPostIdToDelete(post._id)}
-                                    className="text-red-600 hover:text-red-800 font-medium text-sm cursor-pointer"
+                                    className="text-red-500 hover:text-red-700 font-bold text-xs uppercase cursor-pointer"
                                   >
                                     Hapus
                                   </span>
@@ -229,17 +231,12 @@ const DashboardPosts = () => {
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Hapus Artikel?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Tindakan ini permanen.
-                                    </AlertDialogDescription>
+                                    <AlertDialogDescription>Tindakan ini permanen.</AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Batal</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-red-600 hover:bg-red-700"
-                                      onClick={handleDeletePost}
-                                    >
-                                      Hapus
+                                    <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDeletePost}>
+                                      Ya, Hapus
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -253,18 +250,15 @@ const DashboardPosts = () => {
           </div>
 
           {showMore && (
-            <button
-              onClick={handleShowMore}
-              className="w-full text-blue-600 font-semibold hover:text-blue-800 text-sm py-6 transition"
-            >
+            <button onClick={handleShowMore} className="w-full text-blue-600 font-semibold hover:text-blue-800 text-sm py-6 transition">
               Muat lebih banyak...
             </button>
           )}
         </>
       ) : (
-        <div className="text-center py-10">
-            <p className="text-slate-500">Belum ada artikel.</p>
-             <Link to="/create-post" className="text-blue-500 hover:underline">Buat Baru</Link>
+        <div className="text-center py-20 bg-white w-full rounded-lg border border-dashed">
+            <p className="text-slate-400 mb-2">Belum ada artikel.</p>
+             <Link to="/create-post" className="text-blue-500 font-bold hover:underline">Buat Baru</Link>
         </div>
       )}
     </div>

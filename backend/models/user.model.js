@@ -30,12 +30,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    
     isUserContributor: {
       type: Boolean,
       default: false, 
     },
-
     isApproved: {
       type: Boolean,
       default: true, 
@@ -53,10 +51,12 @@ const userSchema = new mongoose.Schema(
         trim: true,
     },
 
+    // --- DATA PENUNJANG BEASISWA (KHUSUS USER STANDAR) ---
     educationLevel: { 
       type: String, 
-      default: "all",
-      enum: ['TK', 'SD', 'SMP', 'SMA', 'Diploma', 'S1', 'S2', 'S3', 'all'] 
+      default: "", // Diubah defaultnya agar sinkron dengan form frontend yang kosong di awal
+      // Enum disesuaikan dengan value di frontend (DashboardProfile.jsx)
+      enum: ['TK', 'SD', 'SMP', 'SMA', 'D3', 'Diploma', 'S1', 'S2', 'S3', 'all', ''] 
     },
     major: { type: String, default: "" },
     gpa: { type: Number, default: 0 },

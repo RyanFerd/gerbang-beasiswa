@@ -14,7 +14,7 @@ import { getFilePreview, uploadFile } from "@/lib/appwrite/uploadImage";
 import React, { useState } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   Target,
@@ -26,12 +26,19 @@ import {
   CalendarClock,
   ExternalLink,
   ArrowLeft,
+  ShieldAlert,
+  UserCheck
 } from "lucide-react";
 
 const CreatePost = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { currentUser } = useSelector((state) => state.user);
+
+  // --- LOGIKA VALIDASI PROFIL (DIPERBAIKI) ---
+  // Menggunakan isUserContributor sesuai dengan skema database/Redux kamu
+  const isProfileIncomplete = (currentUser?.isUserContributor || currentUser?.isAdmin) && !currentUser?.organizationName;
+  // ------------------------------
 
   const [file, setFile] = useState(null);
   const [imageUploadError, setImageUploadError] = useState(null);
@@ -68,6 +75,17 @@ const CreatePost = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // --- GEMBOK GANDA ---
+    // Mencegah submit paksa jika profil belum lengkap
+    if (isProfileIncomplete) {
+      toast({ 
+        title: "Akses Ditolak!", 
+        description: "Anda wajib melengkapi Nama Organisasi di profil sebelum membuat artikel.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     if (formData.startDate && formData.deadline) {
       const start = new Date(formData.startDate);
       const end = new Date(formData.deadline);
@@ -78,11 +96,17 @@ const CreatePost = () => {
       }
     }
 
+    const submitData = {
+      ...formData,
+      organizationName: currentUser.organizationName, 
+      pic: currentUser.username, 
+    };
+
     try {
       const res = await fetch("/api/post/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData), 
       });
       const data = await res.json();
 
@@ -130,7 +154,38 @@ const CreatePost = () => {
   };
 
   return (
-    <div className="p-4 max-w-7xl mx-auto min-h-screen pb-20 md:px-10 font-sans">
+    <div className="p-4 max-w-7xl mx-auto min-h-screen pb-20 md:px-10 font-sans relative">
+      
+      {/* --- OVERLAY BLOKIR --- */}
+      {isProfileIncomplete && (
+        <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-white border-2 border-indigo-100 shadow-2xl p-8 rounded-3xl max-w-md w-full text-center animate-in fade-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <ShieldAlert className="text-indigo-600" size={40} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800 mb-3">Profil Belum Lengkap!</h2>
+            <p className="text-slate-600 mb-8 leading-relaxed">
+              Untuk menjaga validitas informasi, Anda <b>wajib</b> melengkapi data Organisasi/Instansi di profil sebelum dapat menerbitkan artikel beasiswa.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Button 
+                onClick={() => navigate("/dashboard?tab=profile")}
+                className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center justify-center gap-2"
+              >
+                <UserCheck size={18} /> Lengkapi Profil Sekarang
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate(-1)}
+                className="text-slate-500"
+              >
+                Batal
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* --- HEADER --- */}
       <div className="flex items-center justify-between my-8 border-b pb-5">
         <Button
@@ -148,7 +203,7 @@ const CreatePost = () => {
         </h1>
       </div>
 
-      <form className="flex flex-col lg:grid lg:grid-cols-12 gap-8" onSubmit={handleSubmit}>
+      <form className={`flex flex-col lg:grid lg:grid-cols-12 gap-8 ${isProfileIncomplete ? 'opacity-20 pointer-events-none' : ''}`} onSubmit={handleSubmit}>
         
         {/* --- KOLOM KIRI (DATA UTAMA) --- */}
         <div className="lg:col-span-8 flex flex-col gap-6">
@@ -198,7 +253,7 @@ const CreatePost = () => {
                         className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
                       />
                       <label htmlFor={`jenjang-${jenjang}`} className="text-xs text-slate-700 font-medium cursor-pointer">
-                        {jenjang === "TK" ? "TK/PAUD" : jenjang === "SD" ? "SD/MI" : jenjang === "SMP" ? "SMP/MTs" : jenjang === "SMA" ? "SMA/SMK" : jenjang === "Diploma" ? "Diploma" : jenjang === "S1" ? "Sarjana (S1)" : jenjang === "S2" ? "Magister (S2)" : "Doktor (S3)"}
+                        {jenjang}
                       </label>
                     </div>
                   ))}
@@ -241,11 +296,11 @@ const CreatePost = () => {
 
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-               Isi Konten Artikel <span className="text-red-500">*</span>
+                Isi Konten Artikel <span className="text-red-500">*</span>
             </label>
             <ReactQuill
               theme="snow"
-              placeholder="Tulis detail persyaratan, berkas, dan tahapan seleksi di sini..."
+              placeholder="Tulis detail persyaratan..."
               className="h-80 mb-14 bg-white"
               required
               onChange={(value) => setFormData({ ...formData, content: value })}
@@ -256,7 +311,6 @@ const CreatePost = () => {
         {/* --- KOLOM KANAN (SIDEBAR) --- */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           <div className="lg:sticky lg:top-8 flex flex-col gap-6">
-            
             <div className="bg-white border-2 border-dashed border-slate-300 p-5 rounded-2xl shadow-sm">
               <label className="text-sm font-bold text-slate-700 mb-3 block">Cover Beasiswa</label>
               {formData.image ? (
@@ -271,7 +325,6 @@ const CreatePost = () => {
                 <Button type="button" variant="secondary" onClick={handleUploadImage} disabled={imageUploading} className="w-full">
                   {imageUploading ? "Mengunggah..." : "Upload Cover"}
                 </Button>
-                {imageUploadError && <p className="text-red-500 text-[10px] text-center mt-1">{imageUploadError}</p>}
               </div>
             </div>
 
@@ -282,16 +335,15 @@ const CreatePost = () => {
                 </label>
                 <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
                     <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Tanggal Buka</p>
+                        <p className="text-[10px] uppercase text-slate-500 font-bold">Tanggal Buka</p>
                         <Input type="date" id="startDate" className="bg-white border-slate-300" onChange={handleChange} />
                     </div>
                     <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Tanggal Deadline</p>
+                        <p className="text-[10px] uppercase text-slate-500 font-bold">Tanggal Deadline</p>
                         <Input type="date" id="deadline" className="bg-white border-slate-300" onChange={handleChange} />
                     </div>
                 </div>
               </div>
-
               <div className="pt-4 border-t border-slate-200">
                 <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-2">
                   <ExternalLink size={16} className="text-slate-500" /> Link Website Resmi
@@ -301,24 +353,9 @@ const CreatePost = () => {
             </div>
 
             <div className="space-y-4">
-                {!currentUser.isAdmin && (
-                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex gap-2">
-                    <Info size={16} className="text-amber-600 mt-1 shrink-0" />
-                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                      Artikel Anda akan melewati proses moderasi. Pastikan data yang dimasukkan valid agar cepat disetujui.
-                    </p>
-                  </div>
-                )}
-                
-                <Button type="submit" className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg transition-all active:scale-[0.98]">
+                <Button type="submit" className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg">
                   {currentUser.isAdmin ? "Terbitkan Sekarang" : "Ajukan Artikel"}
                 </Button>
-
-                {createPostError && (
-                  <div className="bg-red-50 border border-red-100 p-3 rounded-lg flex items-center gap-2">
-                    <p className="text-red-600 text-xs font-medium">{createPostError}</p>
-                  </div>
-                )}
             </div>
           </div>
         </div>

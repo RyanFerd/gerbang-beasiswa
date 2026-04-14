@@ -6,7 +6,7 @@ import natural from "natural"
 import sw from "stopword"
 import jwt from "jsonwebtoken" 
 
-// --- 1. CREATE POST (Tetap Sama) ---
+// --- 1. CREATE POST ---
 export const create = async (req, res, next) => {
   if (!req.body.title || !req.body.content) {
     return next(errorHandler(400, "Mohon lengkapi judul dan konten!"))
@@ -18,19 +18,35 @@ export const create = async (req, res, next) => {
     .toLowerCase()
     .replace(/[^a-zA-Z0-9-]/g, "")
 
-  const postStatus = req.user.isAdmin ? 'approved' : 'pending';
-
-  const newPost = new Post({
-    ...req.body,
-    slug,
-    userId: req.user.id,
-    startDate: req.body.startDate,
-    deadline: req.body.deadline,
-    officialLink: req.body.officialLink, 
-    status: postStatus, 
-  })
-
   try {
+    // Ambil data profil user untuk mendapatkan role dan nama organisasi
+    const userProfile = await User.findById(req.user.id);
+
+    // --- GEMBOK BACKEND 1: Hanya Admin / Kontributor yang boleh ---
+    if (!userProfile.isAdmin && !userProfile.isUserContributor) {
+      return next(errorHandler(403, "Akses ditolak! Anda tidak memiliki izin untuk membuat artikel."));
+    }
+
+    // --- GEMBOK BACKEND 2: Wajib punya organizationName ---
+    if (!userProfile.organizationName) {
+      return next(errorHandler(403, "Akses ditolak! Anda wajib melengkapi Nama Organisasi di profil Anda sebelum membuat artikel."));
+    }
+
+    const postStatus = req.user.isAdmin ? 'approved' : 'pending';
+
+    const newPost = new Post({
+      ...req.body,
+      slug,
+      userId: req.user.id,
+      // Otomatis isi dari profil jika tidak diinput manual di form
+      organizationName: req.body.organizationName || userProfile.organizationName,
+      pic: req.body.pic || userProfile.username, 
+      startDate: req.body.startDate,
+      deadline: req.body.deadline,
+      officialLink: req.body.officialLink, 
+      status: postStatus, 
+    })
+
     const savedPost = await newPost.save()
 
     if (!req.user.isAdmin) {
@@ -52,7 +68,7 @@ export const create = async (req, res, next) => {
   }
 }
 
-// --- 2. GET POSTS (DIPERBARUI PADA TOTAL POSTS) ---
+// --- 2. GET POSTS ---
 export const getPosts = async (req, res, next) => {
   try {
     const startIndex = parseInt(req.query.startIndex) || 0
@@ -69,13 +85,11 @@ export const getPosts = async (req, res, next) => {
         }
     }
 
-    // Filter utama
     let queryFilters = {
       ...(req.query.userId && { userId: req.query.userId }),
       ...(req.query.category && { category: req.query.category }),
       ...(req.query.slug && { slug: req.query.slug }),
       ...(req.query.postId && { _id: req.query.postId }),
-      // Logika Jenjang: Mencari di dalam array criteriaEducationLevel
       ...(req.query.educationLevel && req.query.educationLevel !== 'all' && { 
           criteriaEducationLevel: { $in: [req.query.educationLevel] }
       }),
@@ -84,7 +98,6 @@ export const getPosts = async (req, res, next) => {
     const isAdmin = currentUser && currentUser.isAdmin;
     const isViewingOwnPosts = currentUser && req.query.userId === currentUser.id;
 
-    // Filter Status berdasarkan role
     if (isAdmin) {
         if (req.query.status) {
             queryFilters.status = req.query.status;
@@ -95,7 +108,6 @@ export const getPosts = async (req, res, next) => {
         }
     }
 
-    // Tambahkan pencarian kata kunci ke query agar countDocuments akurat
     if (searchTerm) {
         queryFilters.$or = [
             { title: { $regex: searchTerm, $options: 'i' } },
@@ -103,19 +115,19 @@ export const getPosts = async (req, res, next) => {
         ];
     }
 
-    // Ambil data dengan pagination langsung dari DB (lebih efisien daripada filter manual)
     const posts = await Post.find(queryFilters)
         .sort({ updatedAt: sortDirection })
         .skip(startIndex)
-        .limit(limit);
+        .limit(limit)
+        // DITAMBAHKAN organizationName di sini agar frontend bisa nampilin
+        .populate('userId', 'username profilePicture organizationName');
 
-    // Hitung total beasiswa yang sesuai dengan FILTER saja (bukan semua isi DB)
     const totalPosts = await Post.countDocuments(queryFilters); 
     
     const now = new Date()
     const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
     const lastMonthPosts = await Post.countDocuments({ 
-        ...queryFilters, // Hanya hitung yang sesuai filter
+        ...queryFilters, 
         createdAt: { $gte: oneMonthAgo } 
     })
 
@@ -129,7 +141,7 @@ export const getPosts = async (req, res, next) => {
   }
 }
 
-// --- 3. APPROVE POST (Tetap Sama) ---
+// --- 3. APPROVE POST ---
 export const approvePost = async (req, res, next) => {
   if (!req.user.isAdmin) {
     return next(errorHandler(403, "Hanya Admin yang dapat menyetujui artikel!"))
@@ -152,7 +164,7 @@ export const approvePost = async (req, res, next) => {
   }
 }
 
-// --- 4. DELETE POST (Tetap Sama) ---
+// --- 4. DELETE POST ---
 export const deletepost = async (req, res, next) => {
   if (!req.user.isAdmin && req.user.id !== req.params.userId) {
     return next(errorHandler(403, "Anda tidak memiliki izin menghapus artikel ini!"))
@@ -165,7 +177,7 @@ export const deletepost = async (req, res, next) => {
   }
 }
 
-// --- 5. UPDATE POST (Pastikan field kriteria ikut terupdate) ---
+// --- 5. UPDATE POST ---
 export const updatepost = async (req, res, next) => {
   if (!req.user.isAdmin && req.user.id !== req.params.userId) {
     return next(errorHandler(403, "Anda tidak memiliki izin mengedit artikel ini!"))
@@ -187,6 +199,8 @@ export const updatepost = async (req, res, next) => {
           criteriaMinGPA: req.body.criteriaMinGPA,
           criteriaLocation: req.body.criteriaLocation,
           criteriaMaxIncome: req.body.criteriaMaxIncome,
+          organizationName: req.body.organizationName,
+          pic: req.body.pic,
         },
       },
       { new: true }

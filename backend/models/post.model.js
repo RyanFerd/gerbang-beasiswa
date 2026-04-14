@@ -4,7 +4,8 @@ const postSchema = new mongoose.Schema(
   {
     // --- DATA STANDAR POSTINGAN ---
     userId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId, // <-- DIUBAH MENJADI OBJECTID
+      ref: "User",                          // <-- REFERENSI KE MODEL USER
       required: true,
     },
     title: {
@@ -31,6 +32,16 @@ const postSchema = new mongoose.Schema(
       unique: true,
     },
     
+    // --- DATA PENYELENGGARA (BARU DITAMBAHKAN) ---
+    organizationName: {
+      type: String,
+      default: "",
+    },
+    pic: {
+      type: String,
+      default: "",
+    },
+
     // --- LINK PENDAFTARAN ---
     officialLink: {
       type: String,
